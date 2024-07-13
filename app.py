@@ -52,12 +52,14 @@ selected_environment = st.sidebar.selectbox("Select Environment", environments)
 environment_info = environment_details.get(selected_environment, [])
 df_environment_info = pd.DataFrame(environment_info)
 
-# Display environment details
+# Display environment details with checkboxes
 st.write(f"Environment Details for {selected_environment}")
-selected_rows = st.multiselect("Select Rows", df_environment_info.index)
+df_environment_info['Selected'] = False
 
-for idx in selected_rows:
-    st.write(df_environment_info.loc[idx].to_dict())
+for idx, row in df_environment_info.iterrows():
+    df_environment_info.at[idx, 'Selected'] = st.checkbox(f"Select {row['Server Name']}", key=idx)
+
+st.dataframe(df_environment_info)
 
 # Fetch services based on selected environment
 services = services_data.get(selected_environment, [])
@@ -65,7 +67,6 @@ df_services = pd.DataFrame(services)
 
 # Display services with checkboxes
 st.write(f"Services in {selected_environment}")
-
 selected_services = []
 for idx, service in df_services.iterrows():
     col1, col2, col3, col4 = st.columns([3, 2, 2, 3])
