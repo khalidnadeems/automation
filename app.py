@@ -1,4 +1,32 @@
 import streamlit as st
+import winrm
+import pandas as pd
+
+def get_remote_windows_services(server, username, password):
+    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
+    command = 'Get-Service | Select-Object Name, Status, DisplayName | ConvertTo-Json'
+    result = session.run_ps(command)
+    services = pd.read_json(result.std_out.decode('utf-8'))
+    services['server'] = server  # Add server identifier
+    return services
+
+def get_remote_iis_services(server, username, password):
+    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
+    command = '''
+    Import-Module WebAdministration
+    Get-Website | Select-Object Name, State | ConvertTo-Json
+    '''
+    result = session.run_ps(command)
+    services = pd.read_json(result.std_out.decode('utf-8'))
+    services['server'] = server  # Add server identifier
+    return services
+
+def manage_service(server, username, password, service_name, action):
+    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
+    command = f'Set-Service -Name {service_name} -Status {action}'
+    result = session.run_ps(command)
+    return result.status_code == 0
+
 
 # Define the servers for each environment
 ENV_SERVERS = {
