@@ -1,32 +1,5 @@
 import streamlit as st
-import winrm
 import pandas as pd
-
-def get_remote_windows_services(server, username, password):
-    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
-    command = 'Get-Service | Select-Object Name, Status, DisplayName | ConvertTo-Json'
-    result = session.run_ps(command)
-    services = pd.read_json(result.std_out.decode('utf-8'))
-    services['server'] = server  # Add server identifier
-    return services
-
-def get_remote_iis_services(server, username, password):
-    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
-    command = '''
-    Import-Module WebAdministration
-    Get-Website | Select-Object Name, State | ConvertTo-Json
-    '''
-    result = session.run_ps(command)
-    services = pd.read_json(result.std_out.decode('utf-8'))
-    services['server'] = server  # Add server identifier
-    return services
-
-def manage_service(server, username, password, service_name, action):
-    session = winrm.Session(f'http://{server}:5985/wsman', auth=(username, password))
-    command = f'Set-Service -Name {service_name} -Status {action}'
-    result = session.run_ps(command)
-    return result.status_code == 0
-
 
 # Define the servers for each environment
 ENV_SERVERS = {
@@ -35,46 +8,61 @@ ENV_SERVERS = {
     "Production": ["prod-server1", "prod-server2"]
 }
 
+# Sample function implementations (replace with real implementations)
 def fetch_services(servers, username, password):
-    all_windows_services = pd.DataFrame()
-    all_iis_services = pd.DataFrame()
-    
-    for server in servers:
-        try:
-            windows_services = get_remote_windows_services(server, username, password)
-            iis_services = get_remote_iis_services(server, username, password)
-            
-            all_windows_services = pd.concat([all_windows_services, windows_services], ignore_index=True)
-            all_iis_services = pd.concat([all_iis_services, iis_services], ignore_index=True)
-        except Exception as e:
-            st.error(f"Failed to fetch services from {server}: {e}")
-    
-    return all_windows_services, all_iis_services
+    # Dummy data for example purposes
+    windows_services = pd.DataFrame({
+        'Name': ['Service1', 'Service2', 'Service3'],
+        'Status': ['Running', 'Stopped', 'Running'],
+        'DisplayName': ['Service One', 'Service Two', 'Service Three'],
+        'server': ['Server1', 'Server2', 'Server1']
+    })
+    iis_services = pd.DataFrame({
+        'Name': ['Site1', 'Site2', 'Site3'],
+        'State': ['Started', 'Stopped', 'Started'],
+        'server': ['Server1', 'Server2', 'Server1']
+    })
+    return windows_services, iis_services
 
-st.title("Service Management Dashboard")
+def manage_service(server, username, password, service_name, action):
+    # Dummy implementation
+    print(f"{action} service {service_name} on {server}")
+    return True
 
-environment = st.selectbox("Select Environment", ["Development", "Testing", "Production"])
-servers = ENV_SERVERS.get(environment, [])
-username = st.text_input("Username")
-password = st.text_input("Password", type="password")
+def main():
+    st.set_page_config(layout="wide")
+    st.title("Service Management Dashboard")
 
-if st.button("Fetch Services"):
-    if not servers:
-        st.error("No servers defined for the selected environment.")
-    else:
-        windows_df, iis_df = fetch_services(servers, username, password)
-        
+    environment = st.selectbox("Select Environment", ["Development", "Testing", "Production"])
+    servers = ENV_SERVERS.get(environment, [])
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Fetch Services"):
+        if not servers:
+            st.error("No servers defined for the selected environment.")
+        else:
+            windows_df, iis_df = fetch_services(servers, username, password)
+            st.session_state.windows_df = windows_df
+            st.session_state.iis_df = iis_df
+
+    if 'windows_df' in st.session_state and 'iis_df' in st.session_state:
+        windows_df = st.session_state.windows_df
+        iis_df = st.session_state.iis_df
+
         st.subheader("Windows Services")
-        windows_df['select'] = False
-        windows_services = st.data_editor(windows_df, use_container_width=True, key='windows_services')
-        
+        windows_df['select'] = [False] * len(windows_df)
+        for index, row in windows_df.iterrows():
+            windows_df.at[index, 'select'] = st.checkbox(f"Select {row['Name']} on {row['server']}", key=f"windows_{index}")
+
         st.subheader("IIS Services")
-        iis_df['select'] = False
-        iis_services = st.data_editor(iis_df, use_container_width=True, key='iis_services')
-        
-        selected_windows_services = windows_services[windows_services['select']]
-        selected_iis_services = iis_services[iis_services['select']]
-        
+        iis_df['select'] = [False] * len(iis_df)
+        for index, row in iis_df.iterrows():
+            iis_df.at[index, 'select'] = st.checkbox(f"Select {row['Name']} on {row['server']}", key=f"iis_{index}")
+
+        selected_windows_services = windows_df[windows_df['select']]
+        selected_iis_services = iis_df[iis_df['select']]
+
         if st.button("Start Selected Services"):
             for idx, service in selected_windows_services.iterrows():
                 manage_service(service['server'], username, password, service['Name'], 'Start')
@@ -88,3 +76,6 @@ if st.button("Fetch Services"):
             for idx, service in selected_iis_services.iterrows():
                 manage_service(service['server'], username, password, service['Name'], 'Stop')
             st.success("Selected services stopped.")
+
+if __name__ == "__main__":
+    main()
