@@ -1,15 +1,19 @@
-from sqlalchemy import create_engine
+import pyodbc
 import bcpandas as bcp
 import pandas as pd
 
 # Define your connection string
-connection_string = (
-    'mssql+pyodbc://username:password@server/database?'
-    'driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes'
+conn_str = (
+    'DRIVER={ODBC Driver 18 for SQL Server};'
+    'SERVER=your_server_name;'
+    'DATABASE=your_database_name;'
+    'UID=your_username;'
+    'PWD=your_password;'
+    'TrustServerCertificate=yes;'  # Use this if you're connecting to a server with a self-signed certificate
 )
 
-# Create an SQLAlchemy engine
-engine = create_engine(connection_string)
+# Create a connection object
+conn = pyodbc.connect(conn_str)
 
 # Example DataFrame to write to SQL Server
 df = pd.DataFrame({
@@ -21,10 +25,13 @@ df = pd.DataFrame({
 table_name = 'your_table_name'
 
 # Write DataFrame to SQL Server
-bcp.to_sql(df, table_name, connection_string, if_exists='replace')  # if_exists can be 'replace', 'append', 'fail'
+bcp.to_sql(df, table_name, conn_str, if_exists='replace')  # if_exists can be 'replace', 'append', 'fail'
 
 # Read DataFrame from SQL Server
 query = f"SELECT * FROM {table_name}"
-df_read = pd.read_sql(query, engine)
+df_read = pd.read_sql(query, conn)
 
 print(df_read)
+
+# Close the connection
+conn.close()
