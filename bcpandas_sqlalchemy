@@ -1,0 +1,30 @@
+from sqlalchemy import create_engine
+import bcpandas as bcp
+import pandas as pd
+
+# Define your connection string
+connection_string = (
+    'mssql+pyodbc://username:password@server/database?'
+    'driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes'
+)
+
+# Create an SQLAlchemy engine
+engine = create_engine(connection_string)
+
+# Example DataFrame to write to SQL Server
+df = pd.DataFrame({
+    'column1': [1, 2, 3],
+    'column2': ['A', 'B', 'C']
+})
+
+# Specify the table name
+table_name = 'your_table_name'
+
+# Write DataFrame to SQL Server
+bcp.to_sql(df, table_name, connection_string, if_exists='replace')  # if_exists can be 'replace', 'append', 'fail'
+
+# Read DataFrame from SQL Server
+query = f"SELECT * FROM {table_name}"
+df_read = pd.read_sql(query, engine)
+
+print(df_read)
