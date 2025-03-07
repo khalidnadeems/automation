@@ -1,0 +1,75 @@
+import streamlit as st
+import pandas as pd
+import subprocess
+import json
+
+# Function to fetch Windows services
+def get_windows_services(server):
+    try:
+        cmd = f'powershell Get-Service | Select-Object Name,Status | ConvertTo-Json'
+        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+        services = json.loads(output.stdout)
+        return {svc["Name"]: svc["Status"] for svc in services}
+    except:
+        return {"Error": "Failed to fetch"}
+
+# Function to fetch IIS websites
+def get_iis_websites(server):
+    try:
+        cmd = f'powershell Get-Website | Select-Object Name,State | ConvertTo-Json'
+        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+        websites = json.loads(output.stdout)
+        return {site["Name"]: site["State"] for site in websites}
+    except:
+        return {"Error": "Failed to fetch"}
+
+# Function to fetch Task Scheduler tasks
+def get_scheduled_tasks(server):
+    try:
+        cmd = f'powershell Get-ScheduledTask | Select-Object TaskName,State | ConvertTo-Json'
+        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+        tasks = json.loads(output.stdout)
+        return {task["TaskName"]: task["State"] for task in tasks}
+    except:
+        return {"Error": "Failed to fetch"}
+
+# Sample list of servers for each environment
+env_servers = {
+    "Dev": ["Server1", "Server2"],
+    "Prod": ["Server3"]
+}
+
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select a page", ["Service Management", "Release Management"])
+
+# Service Management Page (Default)
+if page == "Service Management":
+    st.title("Service Management")
+
+    # Environment Selection Dropdown
+    selected_env = st.selectbox("Select Environment", options=list(env_servers.keys()))
+
+    if selected_env:
+        data = []
+
+        for server in env_servers[selected_env]:
+            windows_services = get_windows_services(server)
+            iis_services = get_iis_websites(server)
+            task_scheduler = get_scheduled_tasks(server)
+
+            row = {
+                "Server Name": server,
+                "Windows Services": "\n".join([f"{svc} ({status})" for svc, status in windows_services.items()]),
+                "IIS Services": "\n".join([f"{site} ({state})" for site, state in iis_services.items()]),
+                "Task Scheduler": "\n".join([f"{task} ({state})" for task, state in task_scheduler.items()]),
+            }
+            data.append(row)
+
+        df = pd.DataFrame(data)
+        st.dataframe(df)
+
+# Release Management Page
+elif page == "Release Management":
+    st.title("Release Management")
+    st.write("This page is under development.")
