@@ -3,40 +3,51 @@ import pandas as pd
 import subprocess
 import json
 
-# Function to fetch Windows services
+# Function to run PowerShell command on a remote server
+def run_powershell_command(server, command):
+    try:
+        # PowerShell command for remote execution
+        cmd = f'powershell Invoke-Command -ComputerName {server} -ScriptBlock {{{command}}} | ConvertTo-Json -Compress'
+        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+
+        if output.stdout:
+            return json.loads(output.stdout)
+        else:
+            return {"Error": f"Failed to fetch from {server}"}
+    except Exception as e:
+        return {"Error": str(e)}
+
+# Function to fetch Windows services from a remote server
 def get_windows_services(server):
-    try:
-        cmd = f'powershell Get-Service | Select-Object Name,Status | ConvertTo-Json'
-        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
-        services = json.loads(output.stdout)
+    command = "Get-Service | Select-Object Name,Status"
+    services = run_powershell_command(server, command)
+    
+    if isinstance(services, list):
         return {svc["Name"]: svc["Status"] for svc in services}
-    except:
-        return {"Error": "Failed to fetch"}
+    return services
 
-# Function to fetch IIS websites
+# Function to fetch IIS websites from a remote server
 def get_iis_websites(server):
-    try:
-        cmd = f'powershell Get-Website | Select-Object Name,State | ConvertTo-Json'
-        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
-        websites = json.loads(output.stdout)
+    command = "Get-Website | Select-Object Name,State"
+    websites = run_powershell_command(server, command)
+
+    if isinstance(websites, list):
         return {site["Name"]: site["State"] for site in websites}
-    except:
-        return {"Error": "Failed to fetch"}
+    return websites
 
-# Function to fetch Task Scheduler tasks
+# Function to fetch Task Scheduler tasks from a remote server
 def get_scheduled_tasks(server):
-    try:
-        cmd = f'powershell Get-ScheduledTask | Select-Object TaskName,State | ConvertTo-Json'
-        output = subprocess.run(cmd, capture_output=True, text=True, shell=True)
-        tasks = json.loads(output.stdout)
-        return {task["TaskName"]: task["State"] for task in tasks}
-    except:
-        return {"Error": "Failed to fetch"}
+    command = "Get-ScheduledTask | Select-Object TaskName,State"
+    tasks = run_powershell_command(server, command)
 
-# Sample list of servers for each environment
+    if isinstance(tasks, list):
+        return {task["TaskName"]: task["State"] for task in tasks}
+    return tasks
+
+# Define environments and their respective servers
 env_servers = {
-    "Dev": ["Server1", "Server2"],
-    "Prod": ["Server3"]
+    "Dev": ["RemoteServer1", "RemoteServer2"],
+    "Prod": ["RemoteServer3"]
 }
 
 # Sidebar Navigation
