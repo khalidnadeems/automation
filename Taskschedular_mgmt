@@ -1,0 +1,18 @@
+$TaskName = "YourTaskName"   # Replace with the actual task name
+$TaskPath = "\"              # Replace with the actual task path if necessary
+
+# Get the task status
+$Task = Get-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -ErrorAction SilentlyContinue
+
+if ($Task) {
+    $TaskState = (Get-ScheduledTaskInfo -TaskName $TaskName -TaskPath $TaskPath).State
+    if ($TaskState -eq "Running") {
+        Write-Output "Task '$TaskName' is already running."
+    } else {
+        Write-Output "Task '$TaskName' is not running. Starting it now..."
+        Start-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath
+        Write-Output "Task '$TaskName' has been started."
+    }
+} else {
+    Write-Output "Task '$TaskName' not found."
+}
