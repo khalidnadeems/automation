@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 from jira import JIRA
 import pyodbc
-from requests import Session
-from requests.adapters import HTTPAdapter
 
 # ---------------- CONFIGURATION ----------------
 JIRA_URL = "https://your-domain.atlassian.net"
@@ -65,16 +63,10 @@ def load_from_db(version):
 # ---------------- JIRA FUNCTIONS ----------------
 @st.cache_data(ttl=300)
 def get_jira_connection():
-    session = Session()
-    adapter = HTTPAdapter(max_retries=3)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    
-    return JIRA(
-        server=JIRA_URL,
-        basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN),
-        session=session
-    )
+    options = {
+        'server': JIRA_URL
+    }
+    return JIRA(options=options, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
 
 @st.cache_data(ttl=300)
 def get_versions():
