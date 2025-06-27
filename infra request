@@ -1,0 +1,19 @@
+Subject: Request for Provisioning Three New Disks on UAT Database Server
+
+Dear Infra Team,
+
+We would like to request the provisioning of three new disks on the UAT database server to address persistent performance issues. Below is the detailed justification for this request:
+
+The Application team has been observing database slowness for the past few months, which is adversely impacting our SLA commitments for timely feed deliveries.
+
+Based on our investigation, the Cloud team recommended enabling PvSCSI on the database server for improved I/O performance. However, we encountered a limitation.
+
+Enabling PvSCSI failed due to the server running Windows Server 2016, which does not support PvSCSI.
+
+Additionally, the Cloud team has confirmed that existing disks cannot be shrunk, and to enhance performance on the current LSI controller, disks of optimal size are required.
+
+As an alternate solution, we propose provisioning three new disks, migrating the databases to them, and subsequently decommissioning the existing disks. This approach is expected to significantly improve database performance.
+
+We request your support in provisioning these disks at the earliest possible to help us mitigate the performance bottleneck and meet our SLA commitments.
+
+Please let us know if any further details are required.
