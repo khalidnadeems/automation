@@ -78,11 +78,21 @@ def save_to_db(df, version):
     conn.commit()
     conn.close()
 
-def load_from_db(version):
-    conn = get_connection()
-    df = pd.read_sql(f"SELECT * FROM {TABLE_NAME} WHERE fix_version = ?", conn, params=[version])
-    conn.close()
-    return df
+def update_jira_fields(df):
+    jira = get_jira_connection()
+    for _, row in df.iterrows():
+        try:
+            issue = jira.issue(row['JIRA'])
+            fields_to_update = {}
+            if row['Summary'] != issue.fields.summary:
+                fields_to_update['summary'] = row['Summary']
+            # Assuming 'Business Benefit' is mapped to a customfield
+            if hasattr(issue.fields, 'customfield_XXXXX') and row['Business Benefit'] != getattr(issue.fields, 'customfield_XXXXX'):
+                fields_to_update['customfield_XXXXX'] = row['Business Benefit']
+            if fields_to_update:
+                issue.update(fields=fields_to_update)
+        except Exception as e:
+            st.error(f"Failed to update JIRA {row['JIRA']}: {e}")
 
 # ---- JIRA FUNCTIONS ----
 @st.cache_data(ttl=300)
@@ -145,6 +155,7 @@ with tab2:
             df, key="unreleased_edit", use_container_width=True,
             disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"], num_rows="dynamic"
         )
-        if st.button("💾 Save to SQL"):
+        if st.button("💾 Save to SQL and Update JIRA"):
             save_to_db(editable_df, selected)
-            st.success("Saved successfully!")
+            update_jira_fields(editable_df)
+            st.success("Saved and JIRA updated successfully!")
