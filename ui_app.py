@@ -63,6 +63,15 @@ with tab2:
         submitted = st.form_submit_button("💾 Save & Update JIRA")
 
     if submitted:
+        required_columns = [
+            "Team Name", "JIRA", "JIRA Type", "Assignee", "Summary", "Business Benefit",
+            "Story Type", "User Sign-off Needed? Y/N", "Release Component", "Justification for Release",
+            "Pre-Implementation Plan", "Implementation Plan", "Post Implementation Plan",
+            "Risk / Impact if not released", "Rollback Plan"
+        ]
+        for col in required_columns:
+            if col not in temp_df.columns:
+                temp_df[col] = ""
         st.session_state.temp_save = temp_df
         st.session_state.show_confirm = True
 
