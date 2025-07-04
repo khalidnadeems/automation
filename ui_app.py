@@ -44,11 +44,22 @@ with tab2:
 
     if selected_unreleased:
         if st.session_state.loaded_version != selected_unreleased or st.session_state.editable_df.empty:
+            jira_df = load_jira_issues(selected_unreleased).copy()
             db_df = load_from_db(selected_unreleased)
+
             if not db_df.empty:
-                st.session_state.editable_df = db_df.copy()
-            else:
-                st.session_state.editable_df = load_jira_issues(selected_unreleased).copy()
+                jira_df.set_index("JIRA", inplace=True)
+                db_df.set_index("jira_key", inplace=True)
+                for col in db_df.columns:
+                    if col in jira_df.columns:
+                        jira_df[col].update(db_df[col])
+                    else:
+                        jira_df[col] = db_df[col]
+                jira_df.reset_index(inplace=True)
+
+            st.session_state.editable_df = jira_df
+            st.session_state.loaded_version = selected_unreleased
+            st.session_state.show_confirm = False
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
