@@ -10,7 +10,7 @@ from helpers import (
 )
 
 st.set_page_config(page_title="JIRA Release Dashboard", layout="wide")
-st.title("?? JIRA Release Tracker")
+st.title("🚀 JIRA Release Tracker")
 
 create_table_if_not_exists()
 released_versions, unreleased_versions = get_versions()
@@ -23,7 +23,7 @@ if "show_confirm" not in st.session_state:
     st.session_state.show_confirm = False
 
 # Tabs
-tab1, tab2 = st.tabs(["?? Released", "??? Unreleased"])
+tab1, tab2 = st.tabs(["📦 Released", "🛠️ Unreleased"])
 
 with tab1:
     selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
@@ -44,7 +44,11 @@ with tab2:
 
     if selected_unreleased:
         if st.session_state.loaded_version != selected_unreleased or st.session_state.editable_df.empty:
-            st.session_state.editable_df = load_jira_issues(selected_unreleased).copy()
+            db_df = load_from_db(selected_unreleased)
+            if not db_df.empty:
+                st.session_state.editable_df = db_df.copy()
+            else:
+                st.session_state.editable_df = load_jira_issues(selected_unreleased).copy()
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
@@ -56,23 +60,23 @@ with tab2:
             num_rows="dynamic",
             disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
         )
-        submitted = st.form_submit_button("?? Save & Update JIRA")
+        submitted = st.form_submit_button("💾 Save & Update JIRA")
 
     if submitted:
         st.session_state.temp_save = temp_df
         st.session_state.show_confirm = True
 
     if st.session_state.get("show_confirm") and "temp_save" in st.session_state:
-        with st.expander("?? Confirm Save Operation", expanded=True):
+        with st.expander("⚠️ Confirm Save Operation", expanded=True):
             st.write("Are you sure you want to save changes to the database and update JIRA?")
             col1, col2 = st.columns([1, 1])
-            if col1.button("? Confirm Save"):
+            if col1.button("✅ Confirm Save"):
                 save_to_db(st.session_state.temp_save, selected_unreleased)
                 update_jira_fields(st.session_state.temp_save)
-                st.success("? Data saved to DB and JIRA updated successfully.")
+                st.success("✅ Data saved to DB and JIRA updated successfully.")
                 st.session_state.editable_df = st.session_state.temp_save
                 st.session_state.show_confirm = False
                 del st.session_state.temp_save
-            if col2.button("? Cancel"):
+            if col2.button("❌ Cancel"):
                 st.session_state.show_confirm = False
                 del st.session_state.temp_save
