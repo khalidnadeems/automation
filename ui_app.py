@@ -32,8 +32,12 @@ with tab1:
         if df.empty:
             st.warning("No saved data found for this release.")
         else:
-            st.data_editor(df, key="released_view", use_container_width=True, disabled=[
-                "Team Name", "JIRA", "JIRA Type", "Assignee"])
+            st.data_editor(
+                df,
+                key="released_view",
+                use_container_width=True,
+                disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
+            )
 
 @st.cache_data
 def load_jira_issues(version):
@@ -47,43 +51,46 @@ with tab2:
             jira_df = load_jira_issues(selected_unreleased).copy()
             db_df = load_from_db(selected_unreleased)
 
+            # Editable fields from DB
+            editable_cols = [
+                "Story Type", "User Sign-off Needed? Y/N", "Release Component",
+                "Justification for Release", "Pre-Implementation Plan",
+                "Implementation Plan", "Post Implementation Plan",
+                "Risk / Impact if not released", "Rollback Plan"
+            ]
+
+            # Normalize and prepare for merge
+            jira_df.columns = jira_df.columns.str.strip()
+            db_df.columns = db_df.columns.str.strip()
+
+            # Rename for merging
+            jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+
             if not db_df.empty:
                 merged_df = pd.merge(
                     jira_df,
                     db_df,
                     how="left",
-                    left_on="JIRA",
-                    right_on="jira_key",
+                    on="jira_key",
                     suffixes=("", "_db")
                 )
-
-                editable_cols = [
-                    "Story Type", "User Sign-off Needed? Y/N", "Release Component",
-                    "Justification for Release", "Pre-Implementation Plan",
-                    "Implementation Plan", "Post Implementation Plan",
-                    "Risk / Impact if not released", "Rollback Plan"
-                ]
 
                 for col in editable_cols:
                     db_col = col + "_db"
                     if db_col in merged_df.columns:
-                        merged_df[col] = merged_df[db_col].combine_first(merged_df[col])
+                        merged_df[col] = merged_df[db_col].combine_first(merged_df.get(col))
                         merged_df.drop(columns=db_col, inplace=True)
 
-                final_cols = [col for col in jira_df.columns] + [col for col in editable_cols if col in merged_df.columns]
-for col in editable_cols:
-    if col not in merged_df.columns:
-        merged_df[col] = ""
-st.session_state.editable_df = merged_df[final_cols]
+                # Ensure all editable columns exist
+                for col in editable_cols:
+                    if col not in merged_df.columns:
+                        merged_df[col] = ""
+
+                final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
+                st.session_state.editable_df = merged_df[final_cols]
             else:
                 st.session_state.editable_df = jira_df
 
-            st.session_state.loaded_version = selected_unreleased
-            st.session_state.show_confirm = False
-
-            st.session_state.editable_df = jira_df
-            st.session_state.loaded_version = selected_unreleased
-            st.session_state.show_confirm = False
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
@@ -100,9 +107,9 @@ st.session_state.editable_df = merged_df[final_cols]
     if submitted:
         required_columns = [
             "Team Name", "JIRA", "JIRA Type", "Assignee", "Summary", "Business Benefit",
-            "Story Type", "User Sign-off Needed? Y/N", "Release Component", "Justification for Release",
-            "Pre-Implementation Plan", "Implementation Plan", "Post Implementation Plan",
-            "Risk / Impact if not released", "Rollback Plan"
+            "Story Type", "User Sign-off Needed? Y/N", "Release Component",
+            "Justification for Release", "Pre-Implementation Plan", "Implementation Plan",
+            "Post Implementation Plan", "Risk / Impact if not released", "Rollback Plan"
         ]
         for col in required_columns:
             if col not in temp_df.columns:
