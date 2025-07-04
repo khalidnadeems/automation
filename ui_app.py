@@ -86,9 +86,7 @@ with tab2:
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
-            st.session_state.editable_df = jira_df
-            st.session_state.loaded_version = selected_unreleased
-            st.session_state.show_confirm = False
+            st.session_state.editable_df = merged_df[final_cols]
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
