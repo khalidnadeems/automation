@@ -35,13 +35,18 @@ with tab1:
             st.data_editor(df, key="released_view", use_container_width=True, disabled=[
                 "Team Name", "JIRA", "JIRA Type", "Assignee"])
 
+@st.cache_data
+def load_jira_issues(version):
+    return get_issues_by_fix_version(version)
+
 with tab2:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
 
-    if selected_unreleased and (st.session_state.loaded_version != selected_unreleased or st.session_state.editable_df.empty):
-        st.session_state.editable_df = get_issues_by_fix_version(selected_unreleased)
-        st.session_state.loaded_version = selected_unreleased
-        st.session_state.show_confirm = False
+    if selected_unreleased:
+        if st.session_state.loaded_version != selected_unreleased or st.session_state.editable_df.empty:
+            st.session_state.editable_df = load_jira_issues(selected_unreleased).copy()
+            st.session_state.loaded_version = selected_unreleased
+            st.session_state.show_confirm = False
 
     with st.form(key="edit_form"):
         temp_df = st.data_editor(
@@ -69,5 +74,3 @@ with tab2:
                 st.session_state.show_confirm = False
                 del st.session_state.temp_save
             if col2.button("❌ Cancel"):
-                st.session_state.show_confirm = False
-                del st.session_state.temp_save
