@@ -184,4 +184,7 @@ with tab2:
             if col1.button("✅ Confirm Save"):
                 save_to_db(st.session_state.editable_df, selected_unreleased)
                 update_jira_fields(st.session_state.editable_df)
-                st.success("✅ Data saved to DB and JIRA
+                st.success("✅ Data saved to DB and JIRA updated successfully.")
+                st.session_state.show_confirm = False
+            if col2.button("❌ Cancel"):
+                st.session_state.show_confirm = False
