@@ -144,31 +144,35 @@ st.title("🚀 JIRA Release Dashboard")
 create_table_if_not_exists()
 released_versions, unreleased_versions = get_versions()
 
-tab1, tab2 = st.tabs(["📦 Released", "🛠️ Unreleased"])
+if "edit_df" not in st.session_state:
+    st.session_state.edit_df = pd.DataFrame()
 
-with tab1:
-    selected_released = st.selectbox("Select Released Version", released_versions)
-    if selected_released:
-        df = load_from_db(selected_released)
-        if df.empty:
-            st.warning("No saved data found for this release.")
-        else:
-            st.data_editor(df, key="released_view", use_container_width=True, disabled=[
-                "Team Name", "JIRA", "JIRA Type", "Assignee"
-            ])
+with st.tabs(["📦 Released", "🛠️ Unreleased"]) as (tab1, tab2):
+    with tab1:
+        selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
+        if selected_released:
+            df = load_from_db(selected_released)
+            if df.empty:
+                st.warning("No saved data found for this release.")
+            else:
+                st.data_editor(df, key="released_view", use_container_width=True, disabled=[
+                    "Team Name", "JIRA", "JIRA Type", "Assignee"])
 
-with tab2:
-    selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions)
-    if selected_unreleased:
-        df = get_issues_by_fix_version(selected_unreleased)
-        editable_df = st.data_editor(
-            df,
-            key="edit_unreleased",
-            use_container_width=True,
-            num_rows="dynamic",
-            disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
-        )
-        if st.button("💾 Save & Update JIRA"):
-            save_to_db(editable_df, selected_unreleased)
-            update_jira_fields(editable_df)
-            st.success("✅ Saved to DB and updated editable JIRA fields.")
+    with tab2:
+        selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
+        if selected_unreleased:
+            if st.session_state.edit_df.empty:
+                st.session_state.edit_df = get_issues_by_fix_version(selected_unreleased)
+
+            st.session_state.edit_df = st.data_editor(
+                st.session_state.edit_df,
+                key="edit_unreleased",
+                use_container_width=True,
+                num_rows="dynamic",
+                disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
+            )
+
+            if st.button("💾 Save & Update JIRA"):
+                save_to_db(st.session_state.edit_df, selected_unreleased)
+                update_jira_fields(st.session_state.edit_df)
+                st.success("✅ Saved to DB and updated editable JIRA fields.")
