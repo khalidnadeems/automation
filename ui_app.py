@@ -48,14 +48,34 @@ with tab2:
             db_df = load_from_db(selected_unreleased)
 
             if not db_df.empty:
-                jira_df.set_index("JIRA", inplace=True)
-                db_df.set_index("jira_key", inplace=True)
-                for col in db_df.columns:
-                    if col in jira_df.columns:
-                        jira_df[col].update(db_df[col])
-                    else:
-                        jira_df[col] = db_df[col]
-                jira_df.reset_index(inplace=True)
+                merged_df = pd.merge(
+                    jira_df,
+                    db_df,
+                    how="left",
+                    left_on="JIRA",
+                    right_on="jira_key",
+                    suffixes=("", "_db")
+                )
+
+                editable_cols = [
+                    "Story Type", "User Sign-off Needed? Y/N", "Release Component",
+                    "Justification for Release", "Pre-Implementation Plan",
+                    "Implementation Plan", "Post Implementation Plan",
+                    "Risk / Impact if not released", "Rollback Plan"
+                ]
+
+                for col in editable_cols:
+                    db_col = col + "_db"
+                    if db_col in merged_df.columns:
+                        merged_df[col] = merged_df[db_col].combine_first(merged_df[col])
+                        merged_df.drop(columns=db_col, inplace=True)
+
+                st.session_state.editable_df = merged_df[jira_df.columns]
+            else:
+                st.session_state.editable_df = jira_df
+
+            st.session_state.loaded_version = selected_unreleased
+            st.session_state.show_confirm = False
 
             st.session_state.editable_df = jira_df
             st.session_state.loaded_version = selected_unreleased
