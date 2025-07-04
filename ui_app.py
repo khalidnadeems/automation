@@ -69,10 +69,21 @@ with tab2:
             if not db_df.empty:
                 custom_db_cols = editable_cols + ["jira_key"]
                 db_trimmed = db_df[custom_db_cols].copy()
-            else:
-                db_trimmed = pd.DataFrame(columns=editable_cols + ["jira_key"])
+                merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
 
-            merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
+                for col in editable_cols:
+                    if col not in merged_df.columns:
+                        merged_df[col] = ""
+
+                final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
+                st.session_state.editable_df = merged_df[final_cols]
+            else:
+                for col in editable_cols:
+                    if col not in jira_df.columns:
+                        jira_df[col] = ""
+
+                final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
+                st.session_state.editable_df = jira_df[final_cols]
 
             for col in editable_cols:
                 if col not in merged_df.columns:
