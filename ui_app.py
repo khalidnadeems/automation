@@ -49,9 +49,10 @@ with tab2:
 
             if not db_df.empty:
                 custom_db_cols = editable_cols + ["jira_key"]
-db_trimmed = db_df[custom_db_cols].copy() if not db_df.empty else pd.DataFrame(columns=custom_db_cols)
 
-merged_df = pd.merge(
+    db_trimmed = db_df[custom_db_cols].copy() if not db_df.empty else pd.DataFrame(columns=custom_db_cols)
+
+    merged_df = pd.merge(
     jira_df,
     db_trimmed,
     how="left",
@@ -59,10 +60,15 @@ merged_df = pd.merge(
 )
 
                 editable_cols = [
-    "Story Type", "User Sign-off Needed? Y/N", "Release Component",
-    "Justification for Release", "Pre-Implementation Plan",
-    "Implementation Plan", "Post Implementation Plan",
-    "Risk / Impact if not released", "Rollback Plan"
+    "Story Type",
+    "User Sign-off Needed? Y/N",
+    "Release Component",
+    "Justification for Release",
+    "Pre-Implementation Plan",
+    "Implementation Plan",
+    "Post Implementation Plan",
+    "Risk / Impact if not released",
+    "Rollback Plan"
 ]
 
 # Ensure consistent casing
