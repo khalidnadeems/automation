@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from helpers import (
@@ -11,12 +10,20 @@ from helpers import (
 )
 
 st.set_page_config(page_title="JIRA Release Dashboard", layout="wide")
-st.title("ðŸš€ JIRA Release Tracker")
+st.title("🚀 JIRA Release Tracker")
 
 create_table_if_not_exists()
 released_versions, unreleased_versions = get_versions()
 
-tab1, tab2 = st.tabs(["ðŸ“¦ Released", "ðŸ› ï¸ Unreleased"])
+if "loaded_version" not in st.session_state:
+    st.session_state.loaded_version = None
+if "editable_df" not in st.session_state:
+    st.session_state.editable_df = pd.DataFrame()
+if "show_confirm" not in st.session_state:
+    st.session_state.show_confirm = False
+
+# Tabs
+tab1, tab2 = st.tabs(["📦 Released", "🛠️ Unreleased"])
 
 with tab1:
     selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
@@ -31,30 +38,36 @@ with tab1:
 with tab2:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
 
-    if "loaded_version" not in st.session_state or st.session_state.loaded_version != selected_unreleased:
-        st.session_state.loaded_version = selected_unreleased
+    if selected_unreleased and st.session_state.loaded_version != selected_unreleased:
         st.session_state.editable_df = get_issues_by_fix_version(selected_unreleased)
+        st.session_state.loaded_version = selected_unreleased
         st.session_state.show_confirm = False
 
-    st.session_state.editable_df = st.data_editor(
-        st.session_state.editable_df,
-        key="edit_unreleased",
-        use_container_width=True,
-        num_rows="dynamic",
-        disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
-    )
+    with st.form(key="edit_form"):
+        temp_df = st.data_editor(
+            st.session_state.editable_df,
+            key="edit_unreleased",
+            use_container_width=True,
+            num_rows="dynamic",
+            disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
+        )
+        submitted = st.form_submit_button("💾 Save & Update JIRA")
 
-    if st.button("ðŸ’¾ Save & Update JIRA"):
+    if submitted:
+        st.session_state.temp_save = temp_df
         st.session_state.show_confirm = True
 
-    if st.session_state.get("show_confirm"):
-        with st.expander("âš ï¸ Confirm Save Operation", expanded=True):
+    if st.session_state.get("show_confirm") and "temp_save" in st.session_state:
+        with st.expander("⚠️ Confirm Save Operation", expanded=True):
             st.write("Are you sure you want to save changes to the database and update JIRA?")
             col1, col2 = st.columns([1, 1])
-            if col1.button("âœ… Confirm Save"):
-                save_to_db(st.session_state.editable_df, selected_unreleased)
-                update_jira_fields(st.session_state.editable_df)
-                st.success("âœ… Data saved to DB and JIRA updated successfully.")
+            if col1.button("✅ Confirm Save"):
+                save_to_db(st.session_state.temp_save, selected_unreleased)
+                update_jira_fields(st.session_state.temp_save)
+                st.success("✅ Data saved to DB and JIRA updated successfully.")
+                st.session_state.editable_df = st.session_state.temp_save
                 st.session_state.show_confirm = False
-            if col2.button("âŒ Cancel"):
+                del st.session_state.temp_save
+            if col2.button("❌ Cancel"):
                 st.session_state.show_confirm = False
+                del st.session_state.temp_save
