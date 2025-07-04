@@ -70,7 +70,11 @@ with tab2:
                         merged_df[col] = merged_df[db_col].combine_first(merged_df[col])
                         merged_df.drop(columns=db_col, inplace=True)
 
-                st.session_state.editable_df = merged_df[[col for col in jira_df.columns] + editable_cols]
+                final_cols = [col for col in jira_df.columns] + [col for col in editable_cols if col in merged_df.columns]
+for col in editable_cols:
+    if col not in merged_df.columns:
+        merged_df[col] = ""
+st.session_state.editable_df = merged_df[final_cols]
             else:
                 st.session_state.editable_df = jira_df
 
