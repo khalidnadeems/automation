@@ -47,51 +47,39 @@ with tab2:
             jira_df = load_jira_issues(selected_unreleased).copy()
             db_df = load_from_db(selected_unreleased)
 
+            editable_cols = [
+                "Story Type",
+                "User Sign-off Needed? Y/N",
+                "Release Component",
+                "Justification for Release",
+                "Pre-Implementation Plan",
+                "Implementation Plan",
+                "Post Implementation Plan",
+                "Risk / Impact if not released",
+                "Rollback Plan"
+            ]
+
+            # Clean column names
+            jira_df.columns = jira_df.columns.str.strip()
+            db_df.columns = db_df.columns.str.strip()
+
+            # Prepare for merge
+            jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+
             if not db_df.empty:
                 custom_db_cols = editable_cols + ["jira_key"]
-
-    db_trimmed = db_df[custom_db_cols].copy() if not db_df.empty else pd.DataFrame(columns=custom_db_cols)
-
-    merged_df = pd.merge(
-    jira_df,
-    db_trimmed,
-    how="left",
-    on="jira_key"
-)
-
-                editable_cols = [
-    "Story Type",
-    "User Sign-off Needed? Y/N",
-    "Release Component",
-    "Justification for Release",
-    "Pre-Implementation Plan",
-    "Implementation Plan",
-    "Post Implementation Plan",
-    "Risk / Impact if not released",
-    "Rollback Plan"
-]
-
-# Ensure consistent casing
-jira_df.columns = jira_df.columns.str.strip()
-db_df.columns = db_df.columns.str.strip()
-
-# Use lowercase for merge consistency
-jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
-
-
-                for col in editable_cols:
-                    db_col = col + "_db"
-                    if db_col in merged_df.columns:
-                        merged_df[col] = merged_df[db_col].combine_first(merged_df[col])
-                        merged_df.drop(columns=db_col, inplace=True)
-
-                final_cols = [col for col in jira_df.columns if col != "jira_key"] + [col for col in editable_cols if col in merged_df.columns]
-for col in editable_cols:
-    if col not in merged_df.columns:
-        merged_df[col] = ""
-st.session_state.editable_df = merged_df[final_cols]
+                db_trimmed = db_df[custom_db_cols].copy()
             else:
-                st.session_state.editable_df = jira_df
+                db_trimmed = pd.DataFrame(columns=editable_cols + ["jira_key"])
+
+            merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
+
+            for col in editable_cols:
+                if col not in merged_df.columns:
+                    merged_df[col] = ""
+
+            final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
+            st.session_state.editable_df = merged_df[final_cols]
 
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
