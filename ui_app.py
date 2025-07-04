@@ -38,7 +38,7 @@ with tab1:
 with tab2:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
 
-    if selected_unreleased and st.session_state.loaded_version != selected_unreleased:
+    if selected_unreleased and (st.session_state.loaded_version != selected_unreleased or st.session_state.editable_df.empty):
         st.session_state.editable_df = get_issues_by_fix_version(selected_unreleased)
         st.session_state.loaded_version = selected_unreleased
         st.session_state.show_confirm = False
