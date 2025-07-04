@@ -4,30 +4,26 @@ import pyodbc
 from jira import JIRA
 from jira.resilientsession import ResilientSession
 
-# ——— CONFIGURATION ———
+# ——— CONFIG ———
 JIRA_URL = "https://your-domain.atlassian.net"
 JIRA_EMAIL = "your-email@example.com"
 JIRA_API_TOKEN = "your-api-token"
 JIRA_PROJECT_KEY = "ABC"
-JIRA_CUSTOMFIELD_BUSINESS_BENEFIT = "customfield_12345"  # <-- Replace this with real custom field ID
+JIRA_CUSTOMFIELD_BUSINESS_BENEFIT = "customfield_12345"  # 🔄 Replace with actual ID
 
 SQL_SERVER = "your_sql_server"
 SQL_DB = "your_database"
 TABLE_NAME = "JiraReleaseDetails"
 
-# ——— PATCH: ResilientSession Fix ———
+# ——— PATCH JIRA ResilientSession ———
 if not hasattr(ResilientSession, "max_retries"):
     ResilientSession.max_retries = 3
 
 # ——— DATABASE FUNCTIONS ———
 def get_connection():
-    conn_str = (
-        "DRIVER={ODBC Driver 17 for SQL Server};"
-        f"SERVER={SQL_SERVER};"
-        f"DATABASE={SQL_DB};"
-        "Trusted_Connection=yes;"
+    return pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={SQL_SERVER};DATABASE={SQL_DB};Trusted_Connection=yes;"
     )
-    return pyodbc.connect(conn_str)
 
 def create_table_if_not_exists():
     query = f"""
@@ -79,8 +75,7 @@ def save_to_db(df, version):
 
 def load_from_db(version):
     conn = get_connection()
-    query = f"SELECT * FROM {TABLE_NAME} WHERE fix_version = ?"
-    df = pd.read_sql(query, conn, params=[version])
+    df = pd.read_sql(f"SELECT * FROM {TABLE_NAME} WHERE fix_version = ?", conn, params=[version])
     conn.close()
     return df
 
@@ -138,20 +133,15 @@ def update_jira_fields(df):
             st.error(f"Failed to update JIRA {row['JIRA']}: {e}")
 
 # ——— STREAMLIT UI ———
-st.set_page_config(page_title="JIRA Release Tracker", layout="wide")
-st.title("🚀 JIRA Release Dashboard")
+st.set_page_config(page_title="JIRA Release Dashboard", layout="wide")
+st.title("🚀 JIRA Release Tracker")
 
 create_table_if_not_exists()
 released_versions, unreleased_versions = get_versions()
 
-if "edit_df" not in st.session_state:
-    st.session_state.edit_df = pd.DataFrame()
-if "show_confirm" not in st.session_state:
-    st.session_state.show_confirm = False
-
-# Tabs layout
 tab1, tab2 = st.tabs(["📦 Released", "🛠️ Unreleased"])
 
+# —— RELEASED VIEW ONLY ——
 with tab1:
     selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
     if selected_released:
@@ -160,36 +150,38 @@ with tab1:
             st.warning("No saved data found for this release.")
         else:
             st.data_editor(df, key="released_view", use_container_width=True, disabled=[
-                "Team Name", "JIRA", "JIRA Type", "Assignee"])
+                "Team Name", "JIRA", "JIRA Type", "Assignee"
+            ])
 
+# —— UNRELEASED EDITABLE VIEW ——
 with tab2:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
-    if selected_unreleased:
-        if st.session_state.edit_df.empty or st.session_state.get("last_loaded_version") != selected_unreleased:
-            st.session_state.edit_df = get_issues_by_fix_version(selected_unreleased)
-            st.session_state.last_loaded_version = selected_unreleased
 
-        st.session_state.edit_df = st.data_editor(
-            st.session_state.edit_df,
-            key="edit_unreleased",
-            use_container_width=True,
-            num_rows="dynamic",
-            disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
-        )
+    # Reload if version changes
+    if "loaded_version" not in st.session_state or st.session_state.loaded_version != selected_unreleased:
+        st.session_state.loaded_version = selected_unreleased
+        st.session_state.editable_df = get_issues_by_fix_version(selected_unreleased)
+        st.session_state.show_confirm = False
 
-        if st.button("💾 Save & Update JIRA"):
-            st.session_state.show_confirm = True
+    # Data editor
+    st.session_state.editable_df = st.data_editor(
+        st.session_state.editable_df,
+        key="edit_unreleased",
+        use_container_width=True,
+        num_rows="dynamic",
+        disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
+    )
 
-        if st.session_state.show_confirm:
-            with st.expander("⚠️ Please confirm to proceed with saving and updating JIRA", expanded=True):
-                st.write("Are you sure you want to save changes to the database and update JIRA?")
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("✅ Confirm Save"):
-                        save_to_db(st.session_state.edit_df, selected_unreleased)
-                        update_jira_fields(st.session_state.edit_df)
-                        st.success("✅ Saved to DB and updated editable JIRA fields.")
-                        st.session_state.show_confirm = False
-                with col2:
-                    if st.button("❌ Cancel"):
-                        st.session_state.show_confirm = False
+    # Save button
+    if st.button("💾 Save & Update JIRA"):
+        st.session_state.show_confirm = True
+
+    # Confirm section
+    if st.session_state.get("show_confirm"):
+        with st.expander("⚠️ Confirm Save Operation", expanded=True):
+            st.write("Are you sure you want to save changes to the database and update JIRA?")
+            col1, col2 = st.columns([1, 1])
+            if col1.button("✅ Confirm Save"):
+                save_to_db(st.session_state.editable_df, selected_unreleased)
+                update_jira_fields(st.session_state.editable_df)
+                st.success("✅ Data saved to DB and JIRA
