@@ -59,7 +59,7 @@ with released_tab:
             for col in editable_cols:
                 if col not in merged_df.columns:
                     merged_df[col] = ""
-            final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
+            final_cols = list(dict.fromkeys([col for col in jira_df.columns if col != "jira_key"] + editable_cols))
             st.data_editor(merged_df[final_cols], key="released_data", use_container_width=True, disabled=[
                 "Team Name", "JIRA", "JIRA Type", "Assignee"])
         else:
