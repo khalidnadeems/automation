@@ -89,13 +89,13 @@ with unreleased_tab:
                     if col not in merged_df.columns:
                         merged_df[col] = ""
                 final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-                st.session_state.editable_df = merged_df[final_cols]
+                st.session_state.editable_df = merged_df.loc[:, ~pd.Series(final_cols).duplicated()].copy()
             else:
                 for col in editable_cols:
                     if col not in jira_df.columns:
                         jira_df[col] = ""
                 final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-                st.session_state.editable_df = jira_df[final_cols]
+                st.session_state.editable_df = jira_df.loc[:, ~pd.Series(final_cols).duplicated()].copy()
 
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
