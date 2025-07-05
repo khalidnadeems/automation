@@ -39,9 +39,9 @@ editable_cols = [
 def load_jira_issues(version):
     return get_issues_by_fix_version(version)
 
-# Tabs
 released_tab, unreleased_tab = st.tabs(["📦 Released", "🛠️ Unreleased"])
 
+# ----------------------- Released Tab -----------------------
 with released_tab:
     selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
     if selected_released:
@@ -51,10 +51,12 @@ with released_tab:
         jira_df.columns = jira_df.columns.str.strip()
         db_df.columns = db_df.columns.str.strip()
         jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+        if "jira_key" not in db_df.columns and "JIRA" in db_df.columns:
+            db_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
 
         if not db_df.empty:
             custom_db_cols = editable_cols + ["jira_key"]
-            db_trimmed = db_df[custom_db_cols].copy()
+            db_trimmed = db_df[[col for col in custom_db_cols if col in db_df.columns]].copy()
             merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
             for col in editable_cols:
                 if col not in merged_df.columns:
@@ -90,6 +92,7 @@ with released_tab:
                 save_to_db(released_data_empty, selected_released)
                 st.success("✅ New released data saved to database successfully.")
 
+# ---------------------- Unreleased Tab ----------------------
 with unreleased_tab:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
     if selected_unreleased:
@@ -100,10 +103,12 @@ with unreleased_tab:
             jira_df.columns = jira_df.columns.str.strip()
             db_df.columns = db_df.columns.str.strip()
             jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+            if "jira_key" not in db_df.columns and "JIRA" in db_df.columns:
+                db_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
 
             if not db_df.empty:
                 custom_db_cols = editable_cols + ["jira_key"]
-                db_trimmed = db_df[custom_db_cols].copy()
+                db_trimmed = db_df[[col for col in custom_db_cols if col in db_df.columns]].copy()
                 merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
                 for col in editable_cols:
                     if col not in merged_df.columns:
