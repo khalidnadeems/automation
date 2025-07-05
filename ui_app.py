@@ -59,16 +59,36 @@ with released_tab:
             for col in editable_cols:
                 if col not in merged_df.columns:
                     merged_df[col] = ""
-            final_cols = list(dict.fromkeys([col for col in jira_df.columns if col != "jira_key"] + editable_cols))
-            st.data_editor(merged_df[final_cols], key="released_data", use_container_width=True, disabled=[
+            final_cols = []
+            seen_cols = set()
+            jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
+            for col in jira_core_cols + editable_cols:
+                if col not in seen_cols:
+                    final_cols.append(col)
+                    seen_cols.add(col)
+
+            released_data = st.data_editor(merged_df[final_cols], key="released_data", use_container_width=True, disabled=[
                 "Team Name", "JIRA", "JIRA Type", "Assignee"])
+            if st.button("💾 Save Released Data"):
+                save_to_db(released_data, selected_released)
+                st.success("✅ Released data saved to database successfully.")
         else:
             for col in editable_cols:
                 if col not in jira_df.columns:
                     jira_df[col] = ""
-            final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-            st.data_editor(jira_df[final_cols], key="released_data_empty", use_container_width=True, disabled=[
+            jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
+            final_cols = []
+            seen_cols = set()
+            for col in jira_core_cols + editable_cols:
+                if col not in seen_cols:
+                    final_cols.append(col)
+                    seen_cols.add(col)
+
+            released_data_empty = st.data_editor(jira_df[final_cols], key="released_data_empty", use_container_width=True, disabled=[
                 "Team Name", "JIRA", "JIRA Type", "Assignee"])
+            if st.button("💾 Save Released Data (New)"):
+                save_to_db(released_data_empty, selected_released)
+                st.success("✅ New released data saved to database successfully.")
 
 with unreleased_tab:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
@@ -88,14 +108,26 @@ with unreleased_tab:
                 for col in editable_cols:
                     if col not in merged_df.columns:
                         merged_df[col] = ""
-                final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-                st.session_state.editable_df = merged_df.loc[:, ~pd.Series(final_cols).duplicated()].copy()
+                jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
+                final_cols = []
+                seen_cols = set()
+                for col in jira_core_cols + editable_cols:
+                    if col not in seen_cols:
+                        final_cols.append(col)
+                        seen_cols.add(col)
+                st.session_state.editable_df = merged_df[final_cols]
             else:
                 for col in editable_cols:
                     if col not in jira_df.columns:
                         jira_df[col] = ""
-                final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-                st.session_state.editable_df = jira_df.loc[:, ~pd.Series(final_cols).duplicated()].copy()
+                jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
+                final_cols = []
+                seen_cols = set()
+                for col in jira_core_cols + editable_cols:
+                    if col not in seen_cols:
+                        final_cols.append(col)
+                        seen_cols.add(col)
+                st.session_state.editable_df = jira_df[final_cols]
 
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
