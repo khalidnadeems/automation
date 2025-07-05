@@ -76,7 +76,9 @@ with tab2:
                         merged_df[col] = ""
 
                 final_cols = [col for col in jira_df.columns if col != "jira_key"] + editable_cols
-                st.session_state.editable_df = merged_df[final_cols]
+                # Use merged_df only if defined
+                if 'merged_df' in locals():
+                    st.session_state.editable_df = merged_df[final_cols]
             else:
                 for col in editable_cols:
                     if col not in jira_df.columns:
