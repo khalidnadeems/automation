@@ -10,7 +10,7 @@ from helpers import (
 )
 
 st.set_page_config(page_title="JIRA Release Dashboard", layout="wide")
-st.title("🚀 JIRA Release Tracker")
+st.title("ðŸš€ JIRA Release Tracker")
 
 create_table_if_not_exists()
 
@@ -39,9 +39,11 @@ editable_cols = [
 def load_jira_issues(version):
     return get_issues_by_fix_version(version)
 
-released_tab, unreleased_tab = st.tabs(["📦 Released", "🛠️ Unreleased"])
+released_tab, unreleased_tab = st.tabs(["ðŸ“¦ Released", "ðŸ› ï¸ Unreleased"])
 
-# ----------------------- Released Tab -----------------------
+def normalize_keys(df, col):
+    return df[col].astype(str).str.strip().str.upper()
+
 with released_tab:
     selected_released = st.selectbox("Select Released Version", released_versions, key="released_ver")
     if selected_released:
@@ -50,49 +52,35 @@ with released_tab:
 
         jira_df.columns = jira_df.columns.str.strip()
         db_df.columns = db_df.columns.str.strip()
-        jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+
+        if "JIRA" in jira_df.columns:
+            jira_df["jira_key"] = normalize_keys(jira_df, "JIRA")
         if "jira_key" not in db_df.columns and "JIRA" in db_df.columns:
-            db_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
-
-        if not db_df.empty:
-            custom_db_cols = editable_cols + ["jira_key"]
-            db_trimmed = db_df[[col for col in custom_db_cols if col in db_df.columns]].copy()
-            merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
-            for col in editable_cols:
-                if col not in merged_df.columns:
-                    merged_df[col] = ""
-            final_cols = []
-            seen_cols = set()
-            jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
-            for col in jira_core_cols + editable_cols:
-                if col not in seen_cols:
-                    final_cols.append(col)
-                    seen_cols.add(col)
-
-            released_data = st.data_editor(merged_df[final_cols], key="released_data", use_container_width=True, disabled=[
-                "Team Name", "JIRA", "JIRA Type", "Assignee"])
-            if st.button("💾 Save Released Data"):
-                save_to_db(released_data, selected_released)
-                st.success("✅ Released data saved to database successfully.")
+            db_df["jira_key"] = normalize_keys(db_df, "JIRA")
         else:
-            for col in editable_cols:
-                if col not in jira_df.columns:
-                    jira_df[col] = ""
-            jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
-            final_cols = []
-            seen_cols = set()
-            for col in jira_core_cols + editable_cols:
-                if col not in seen_cols:
-                    final_cols.append(col)
-                    seen_cols.add(col)
+            db_df["jira_key"] = normalize_keys(db_df, "jira_key")
 
-            released_data_empty = st.data_editor(jira_df[final_cols], key="released_data_empty", use_container_width=True, disabled=[
-                "Team Name", "JIRA", "JIRA Type", "Assignee"])
-            if st.button("💾 Save Released Data (New)"):
-                save_to_db(released_data_empty, selected_released)
-                st.success("✅ New released data saved to database successfully.")
+        for col in editable_cols:
+            if col not in db_df.columns:
+                db_df[col] = ""
 
-# ---------------------- Unreleased Tab ----------------------
+        custom_db_cols = editable_cols + ["jira_key"]
+        db_trimmed = db_df[custom_db_cols].copy()
+
+        merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
+        for col in editable_cols:
+            if col not in merged_df.columns:
+                merged_df[col] = ""
+
+        jira_core_cols = [col for col in jira_df.columns if col not in editable_cols and col != "jira_key"]
+        final_cols = jira_core_cols + editable_cols
+
+        released_data = st.data_editor(merged_df[final_cols], key="released_data", use_container_width=True, disabled=[
+            "Team Name", "JIRA", "JIRA Type", "Assignee"])
+        if st.button("ðŸ’¾ Save Released Data"):
+            save_to_db(released_data, selected_released)
+            st.success("âœ… Released data saved to database successfully.")
+
 with unreleased_tab:
     selected_unreleased = st.selectbox("Select Unreleased Version", unreleased_versions, key="unreleased_ver")
     if selected_unreleased:
@@ -102,38 +90,30 @@ with unreleased_tab:
 
             jira_df.columns = jira_df.columns.str.strip()
             db_df.columns = db_df.columns.str.strip()
-            jira_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
+
+            if "JIRA" in jira_df.columns:
+                jira_df["jira_key"] = normalize_keys(jira_df, "JIRA")
             if "jira_key" not in db_df.columns and "JIRA" in db_df.columns:
-                db_df.rename(columns={"JIRA": "jira_key"}, inplace=True)
-
-            if not db_df.empty:
-                custom_db_cols = editable_cols + ["jira_key"]
-                db_trimmed = db_df[[col for col in custom_db_cols if col in db_df.columns]].copy()
-                merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
-                for col in editable_cols:
-                    if col not in merged_df.columns:
-                        merged_df[col] = ""
-                jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
-                final_cols = []
-                seen_cols = set()
-                for col in jira_core_cols + editable_cols:
-                    if col not in seen_cols:
-                        final_cols.append(col)
-                        seen_cols.add(col)
-                st.session_state.editable_df = merged_df[final_cols]
+                db_df["jira_key"] = normalize_keys(db_df, "JIRA")
             else:
-                for col in editable_cols:
-                    if col not in jira_df.columns:
-                        jira_df[col] = ""
-                jira_core_cols = [col for col in jira_df.columns if col != "jira_key" and col not in editable_cols]
-                final_cols = []
-                seen_cols = set()
-                for col in jira_core_cols + editable_cols:
-                    if col not in seen_cols:
-                        final_cols.append(col)
-                        seen_cols.add(col)
-                st.session_state.editable_df = jira_df[final_cols]
+                db_df["jira_key"] = normalize_keys(db_df, "jira_key")
 
+            for col in editable_cols:
+                if col not in db_df.columns:
+                    db_df[col] = ""
+
+            custom_db_cols = editable_cols + ["jira_key"]
+            db_trimmed = db_df[custom_db_cols].copy()
+
+            merged_df = pd.merge(jira_df, db_trimmed, how="left", on="jira_key")
+            for col in editable_cols:
+                if col not in merged_df.columns:
+                    merged_df[col] = ""
+
+            jira_core_cols = [col for col in jira_df.columns if col not in editable_cols and col != "jira_key"]
+            final_cols = jira_core_cols + editable_cols
+
+            st.session_state.editable_df = merged_df[final_cols]
             st.session_state.loaded_version = selected_unreleased
             st.session_state.show_confirm = False
 
@@ -145,7 +125,7 @@ with unreleased_tab:
             num_rows="dynamic",
             disabled=["Team Name", "JIRA", "JIRA Type", "Assignee"]
         )
-        submitted = st.form_submit_button("💾 Save & Update JIRA")
+        submitted = st.form_submit_button("ðŸ’¾ Save & Update JIRA")
 
     if submitted:
         for col in editable_cols:
@@ -155,16 +135,16 @@ with unreleased_tab:
         st.session_state.show_confirm = True
 
     if st.session_state.get("show_confirm") and "temp_save" in st.session_state:
-        with st.expander("⚠️ Confirm Save Operation", expanded=True):
+        with st.expander("âš ï¸ Confirm Save Operation", expanded=True):
             st.write("Are you sure you want to save changes to the database and update JIRA?")
             col1, col2 = st.columns([1, 1])
-            if col1.button("✅ Confirm Save"):
+            if col1.button("âœ… Confirm Save"):
                 save_to_db(st.session_state.temp_save, selected_unreleased)
                 update_jira_fields(st.session_state.temp_save)
-                st.success("✅ Data saved to DB and JIRA updated successfully.")
+                st.success("âœ… Data saved to DB and JIRA updated successfully.")
                 st.session_state.editable_df = st.session_state.temp_save
                 st.session_state.show_confirm = False
                 del st.session_state.temp_save
-            if col2.button("❌ Cancel"):
+            if col2.button("âŒ Cancel"):
                 st.session_state.show_confirm = False
                 del st.session_state.temp_save
